@@ -1,5 +1,4 @@
 import streamlit as st
-import yfinance as yf
 
 st.set_page_config(
     page_title="Research Dashboard",
@@ -8,23 +7,20 @@ st.set_page_config(
 
 st.title("📈 Research Dashboard")
 
-ticker = st.text_input(
-    "Ticker",
-    value="MSFT"
-)
+st.success("Die App funktioniert.")
 
-data = yf.download(
-    ticker,
-    period="1y"
-)
+st.markdown("""
+## Willkommen
 
-if not data.empty:
+Dies ist Version 2 des Dashboards.
 
-    st.line_chart(data["Close"])
+In den nächsten Schritten fügen wir hinzu:
 
-    latest = float(data["Close"].iloc[-1])
-
-    st.metric(
-        "Aktueller Kurs",
-        f"{latest:.2f}"
-    )
+- Aktien
+- DAX
+- Nasdaq
+- Gold
+- RSI
+- Trendanalyse
+- Research Score
+""")
