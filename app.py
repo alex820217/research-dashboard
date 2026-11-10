@@ -133,7 +133,9 @@ try:
 
     st.subheader("Kursverlauf")
 
-    st.line_chart(close)st.divider()
+    st.line_chart(close)
+    
+    st.divider()
 
 st.header("🌍 Marktübersicht")
 
