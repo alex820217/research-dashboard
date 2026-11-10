@@ -139,7 +139,7 @@ try:
 
     st.header("🌍 Marktübersicht")
 
-overview = []
+    overview = []
 
 for name, symbol in WATCHLIST.items():
 
