@@ -141,7 +141,7 @@ try:
 
     overview = []
 
-for name, symbol in WATCHLIST.items():
+    for name, symbol in WATCHLIST.items():
 
     try:
 
