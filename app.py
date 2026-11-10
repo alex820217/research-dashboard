@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
+import ta
 
 st.set_page_config(
-    page_title="📈 Börsen Dashboard",
+    page_title="📈 Börsen Research Dashboard",
     layout="wide"
 )
 
-st.title("📈 Research Dashboard")
+st.title("📈 Börsen Research Dashboard")
 
 WATCHLIST = {
     "Microsoft": "MSFT",
@@ -37,7 +38,7 @@ try:
     )
 
     if data.empty:
-        st.warning("Keine Daten gefunden.")
+        st.warning("Keine Daten gefunden")
         st.stop()
 
     close = data["Close"]
@@ -45,34 +46,97 @@ try:
     if hasattr(close, "columns"):
         close = close.iloc[:, 0]
 
-    aktueller_kurs = round(close.iloc[-1], 2)
+    # RSI
+    rsi = ta.momentum.RSIIndicator(
+        close=close,
+        window=14
+    ).rsi()
 
-    performance = round(
-        ((close.iloc[-1] / close.iloc[0]) - 1) * 100,
+    # EMA50
+    ema50 = ta.trend.EMAIndicator(
+        close=close,
+        window=50
+    ).ema_indicator()
+
+    aktueller_kurs = round(
+        float(close.iloc[-1]),
         2
     )
+
+    aktueller_rsi = round(
+        float(rsi.iloc[-1]),
+        1
+    )
+
+    ema50_aktuell = float(
+        ema50.iloc[-1]
+    )
+
+    # Score
+    score = 0
+
+    if aktueller_kurs > ema50_aktuell:
+        score += 50
+
+    if aktueller_rsi > 50:
+        score += 50
+
+    # Marktampel
+
+    if score >= 80:
+        ampel = "🟢 Bullisch"
+
+    elif score >= 50:
+        ampel = "🟡 Neutral"
+
+    else:
+        ampel = "🔴 Schwach"
+
+    # Trend
+
+    if aktueller_kurs > ema50_aktuell:
+        trend = "📈 Aufwärtstrend"
+    else:
+        trend = "📉 Abwärtstrend"
+
+    st.subheader(asset)
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.metric(
-            "Aktueller Kurs",
+            "Kurs",
             aktueller_kurs
         )
 
     with col2:
         st.metric(
-            "1 Jahr %",
-            performance
+            "RSI",
+            aktueller_rsi
         )
+
+    st.subheader("Research Score")
+
+    st.progress(score)
+
+    st.write(
+        f"Score: {score}/100"
+    )
+
+    st.write(
+        f"Trend: {trend}"
+    )
+
+    st.write(
+        f"Marktstatus: {ampel}"
+    )
 
     st.subheader("Kursverlauf")
 
-    chart = pd.DataFrame({
-        "Kurs": close
-    })
-
-    st.line_chart(chart)
+    st.line_chart(close)
 
 except Exception as e:
-    st.error(str(e))
+
+    st.error(
+        f"Fehler: {e}"
+    )
