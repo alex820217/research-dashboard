@@ -133,7 +133,102 @@ try:
 
     st.subheader("Kursverlauf")
 
-    st.line_chart(close)
+    st.line_chart(close)st.divider()
+
+st.header("🌍 Marktübersicht")
+
+overview = []
+
+for name, symbol in WATCHLIST.items():
+
+    try:
+
+        d = yf.download(
+            symbol,
+            period="6mo",
+            auto_adjust=True,
+            progress=False
+        )
+
+        if d.empty:
+            continue
+
+        c = d["Close"]
+
+        if hasattr(c, "columns"):
+            c = c.iloc[:, 0]
+
+        rsi_all = ta.momentum.RSIIndicator(
+            close=c
+        ).rsi()
+
+        ema50_all = ta.trend.EMAIndicator(
+            close=c,
+            window=50
+        ).ema_indicator()
+
+        last_price = float(c.iloc[-1])
+
+        last_rsi = float(
+            rsi_all.iloc[-1]
+        )
+
+        last_ema = float(
+            ema50_all.iloc[-1]
+        )
+
+        s = 0
+
+        if last_price > last_ema:
+            s += 50
+
+        if last_rsi > 50:
+            s += 50
+
+        if s >= 80:
+            trend_icon = "🟢"
+
+        elif s >= 50:
+            trend_icon = "🟡"
+
+        else:
+            trend_icon = "🔴"
+
+        overview.append({
+
+            "Asset": name,
+
+            "Kurs":
+                round(last_price, 2),
+
+            "RSI":
+                round(last_rsi, 1),
+
+            "Score":
+                s,
+
+            "Trend":
+                trend_icon
+
+        })
+
+    except:
+        pass
+
+overview_df = pd.DataFrame(
+    overview
+)
+
+overview_df = overview_df.sort_values(
+    "Score",
+    ascending=False
+)
+
+st.dataframe(
+    overview_df,
+    use_container_width=True
+)
+
 
 except Exception as e:
 
