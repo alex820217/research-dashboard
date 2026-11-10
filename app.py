@@ -10,228 +10,59 @@ st.set_page_config(
 
 st.title("📈 Börsen Research Dashboard")
 
-WATCHLIST = {
-    "Microsoft": "MSFT",
-    "Apple": "AAPL",
-    "Nvidia": "NVDA",
-    "Amazon": "AMZN",
+# ---------------------------
+# Märkte oben
+# ---------------------------
+
+st.subheader("🌍 Marktübersicht")
+
+markets = {
     "DAX": "^GDAXI",
+    "Nasdaq": "^NDX",
+    "S&P500": "^GSPC",
     "Gold": "GC=F",
     "Öl": "CL=F",
     "EUR/USD": "EURUSD=X"
 }
 
-asset = st.selectbox(
-    "Markt auswählen",
-    list(WATCHLIST.keys())
-)
+cols = st.columns(3)
 
-ticker = WATCHLIST[asset]
+i = 0
 
-try:
+for name, symbol in markets.items():
 
-    data = yf.download(
-        ticker,
-        period="1y",
-        auto_adjust=True,
-        progress=False
-    )
+    try:
 
-    if data.empty:
-        st.warning("Keine Daten gefunden")
-        st.stop()
-
-    close = data["Close"]
-
-    if hasattr(close, "columns"):
-        close = close.iloc[:, 0]
-
-    rsi = ta.momentum.RSIIndicator(
-        close=close,
-        window=14
-    ).rsi()
-
-    ema50 = ta.trend.EMAIndicator(
-        close=close,
-        window=50
-    ).ema_indicator()
-
-    aktueller_kurs = round(
-        float(close.iloc[-1]),
-        2
-    )
-
-    aktueller_rsi = round(
-        float(rsi.iloc[-1]),
-        1
-    )
-
-    ema50_aktuell = float(
-        ema50.iloc[-1]
-    )
-
-    score = 0
-
-    if aktueller_kurs > ema50_aktuell:
-        score += 50
-
-    if aktueller_rsi > 50:
-        score += 50
-
-    if score >= 80:
-        ampel = "🟢 Bullisch"
-
-    elif score >= 50:
-        ampel = "🟡 Neutral"
-
-    else:
-        ampel = "🔴 Schwach"
-
-    if aktueller_kurs > ema50_aktuell:
-        trend = "📈 Aufwärtstrend"
-    else:
-        trend = "📉 Abwärtstrend"
-
-    st.subheader(asset)
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.metric(
-            "Kurs",
-            aktueller_kurs
+        df = yf.download(
+            symbol,
+            period="1mo",
+            auto_adjust=True,
+            progress=False
         )
 
-    with col2:
-        st.metric(
-            "RSI",
-            aktueller_rsi
+        close = df["Close"]
+
+        if hasattr(close, "columns"):
+            close = close.iloc[:, 0]
+
+        last_price = round(
+            float(close.iloc[-1]),
+            2
         )
 
-    st.subheader("Research Score")
+        change = round(
+            ((close.iloc[-1] / close.iloc[0]) - 1) * 100,
+            2
+        )
 
-    st.progress(score)
+        with cols[i % 3]:
 
-    st.write(
-        f"Score: {score}/100"
-    )
-
-    st.write(
-        f"Trend: {trend}"
-    )
-
-    st.write(
-        f"Marktstatus: {ampel}"
-    )
-
-    st.subheader("Kursverlauf")
-
-    st.line_chart(close)
-
-    # Marktübersicht
-
-    st.divider()
-
-    st.header("🌍 Marktübersicht")
-
-    overview = []
-
-    for name, symbol in WATCHLIST.items():
-
-        try:
-
-            d = yf.download(
-                symbol,
-                period="6mo",
-                auto_adjust=True,
-                progress=False
+            st.metric(
+                name,
+                last_price,
+                f"{change}%"
             )
 
-            if d.empty:
-                continue
+        i += 1
 
-            c = d["Close"]
-
-            if hasattr(c, "columns"):
-                c = c.iloc[:, 0]
-
-            rsi_all = ta.momentum.RSIIndicator(
-                close=c
-            ).rsi()
-
-            ema50_all = ta.trend.EMAIndicator(
-                close=c,
-                window=50
-            ).ema_indicator()
-
-            last_price = float(c.iloc[-1])
-            last_rsi = float(rsi_all.iloc[-1])
-            last_ema = float(ema50_all.iloc[-1])
-
-            ema20_all = ta.trend.EMAIndicator(
-    close=c,
-    window=20
-).ema_indicator()
-
-ema20 = float(
-    ema20_all.iloc[-1]
-)
-
-performance6m = (
-    (c.iloc[-1] / c.iloc[0]) - 1
-) * 100
-
-s = 0
-
-if ema20 > last_ema:
-    s += 25
-
-if last_price > last_ema:
-    s += 25
-
-if last_rsi > 50:
-    s += 25
-
-if performance6m > 0:
-    s += 25
-
-
-            if s >= 80:
-                trend_icon = "🟢"
-            elif s >= 50:
-                trend_icon = "🟡"
-            else:
-                trend_icon = "🔴"
-
-            overview.append({
-                "Asset": name,
-                "Kurs": round(last_price, 2),
-                "RSI": round(last_rsi, 1),
-                "Score": s,
-                "Trend": trend_icon
-            })
-
-        except:
-            pass
-
-    overview_df = pd.DataFrame(
-        overview
-    )
-
-    if not overview_df.empty:
-
-        overview_df = overview_df.sort_values(
-            "Score",
-            ascending=False
-        )
-
-        st.dataframe(
-            overview_df,
-            use_container_width=True
-        )
-
-except Exception as e:
-
-    st.error(
-        f"Fehler: {e}"
-    )
+    except
