@@ -5,15 +5,15 @@ import ta
 from datetime import datetime
 
 st.set_page_config(
-    page_title="📈 Research Dashboard",
+    page_title="📈 Börsen Research Dashboard",
     layout="wide"
 )
 
 st.title("📈 Börsen Research Dashboard")
 
-# ------------------------------------------------
-# Märkte
-# ------------------------------------------------
+# --------------------------------------------------
+# Watchlist
+# --------------------------------------------------
 
 WATCHLIST = {
     "Microsoft": "MSFT",
@@ -28,9 +28,11 @@ WATCHLIST = {
     "EUR/USD": "EURUSD=X"
 }
 
-# ------------------------------------------------
+# --------------------------------------------------
 # Marktstatus
-# ------------------------------------------------
+# --------------------------------------------------
+
+st.header("🕒 Marktstatus")
 
 hour = datetime.now().hour
 
@@ -40,11 +42,9 @@ else:
     dax_status = "🔴 Geschlossen"
 
 if 15 <= hour < 22:
-    us_status = "🟢 Offen"
+    usa_status = "🟢 Offen"
 else:
-    us_status = "🔴 Geschlossen"
-
-st.subheader("🕒 Marktstatus")
+    usa_status = "🔴 Geschlossen"
 
 col1, col2 = st.columns(2)
 
@@ -52,11 +52,11 @@ with col1:
     st.info(f"DAX: {dax_status}")
 
 with col2:
-    st.info(f"USA: {us_status}")
+    st.info(f"USA: {usa_status}")
 
-# ------------------------------------------------
+# --------------------------------------------------
 # Marktübersicht
-# ------------------------------------------------
+# --------------------------------------------------
 
 st.header("🌍 Marktübersicht")
 
@@ -81,8 +81,12 @@ for name, ticker in WATCHLIST.items():
         if hasattr(close, "columns"):
             close = close.iloc[:, 0]
 
+        if len(close) < 220:
+            continue
+
         rsi = ta.momentum.RSIIndicator(
-            close=close
+            close=close,
+            window=14
         ).rsi()
 
         ema20 = ta.trend.EMAIndicator(
@@ -100,136 +104,119 @@ for name, ticker in WATCHLIST.items():
             window=200
         ).ema_indicator()
 
-        atr = ta.volatility.AverageTrueRange(
-            high=data["High"],
-            low=data["Low"],
-            close=close,
-            window=14
-        ).average_true_range()
-
         price = float(close.iloc[-1])
 
-        current_rsi = float(
-            rsi.iloc[-1]
-        )
-
-        current_atr = float(
-            atr.iloc[-1]
-        )
-
-        atr_percent = (
-            current_atr / price
-        ) * 100
-
-        score = 0
-
-        # Trend
-
-        if ema20.iloc[-1] > ema50.iloc[-1]:
-            score += 20
-
-        if ema50.iloc[-1] > ema200.iloc[-1]:
-            score += 20
-
-        # Kurs
-
-        if price > ema50.iloc[-1]:
-            score += 15
-
-        # RSI
-
-        if 50 <= current_rsi <= 70:
-            score += 15
-
-        # ATR
-
-        if atr_percent < 2:
-            score += 10
-
-        # Performance
+        current_rsi = float(rsi.iloc[-1])
+        current_ema20 = float(ema20.iloc[-1])
+        current_ema50 = float(ema50.iloc[-1])
+        current_ema200 = float(ema200.iloc[-1])
 
         perf6m = (
             (close.iloc[-1] /
              close.iloc[-126]) - 1
         ) * 100
 
+        score = 0
+
+        # EMA20 > EMA50
+        if current_ema20 > current_ema50:
+            score += 20
+
+        # EMA50 > EMA200
+        if current_ema50 > current_ema200:
+            score += 20
+
+        # Kurs > EMA50
+        if price > current_ema50:
+            score += 15
+
+        # RSI
+        if 50 <= current_rsi <= 70:
+            score += 15
+
+        # 6M Performance
         if perf6m > 0:
             score += 10
 
-        # Relative Stärke
-
-        if perf6m > 15:
+        if perf6m > 10:
             score += 10
 
-        # KO Risiko
+        if perf6m > 20:
+            score += 10
 
-        if atr_percent < 2:
-            risiko = "🟢 Niedrig"
+        if score >= 75:
+            trend = "🟢"
 
-        elif atr_percent < 4:
-            risiko = "🟡 Mittel"
+        elif score >= 50:
+            trend = "🟡"
 
         else:
-            risiko = "🔴 Hoch"
+            trend = "🔴"
 
         overview.append({
             "Asset": name,
             "Kurs": round(price, 2),
             "RSI": round(current_rsi, 1),
-            "ATR %": round(
-                atr_percent, 2
-            ),
+            "6M %": round(perf6m, 1),
             "Score": score,
-            "KO Risiko": risiko
+            "Trend": trend
         })
 
-    except:
-        pass
+    except Exception:
+        continue
 
-overview_df = pd.DataFrame(
-    overview
-)
+# --------------------------------------------------
+# Ranking
+# --------------------------------------------------
 
-overview_df = overview_df.sort_values(
-    "Score",
-    ascending=False
-)
+if len(overview) > 0:
 
-st.dataframe(
-    overview_df,
-    use_container_width=True
-)
+    overview_df = pd.DataFrame(overview)
 
-# ------------------------------------------------
-# Top Listen
-# ------------------------------------------------
-
-st.header("🏆 Top Research Scores")
-
-top3 = overview_df.head(3)
-
-for _, row in top3.iterrows():
-
-    st.success(
-        f"{row['Asset']} | Score {row['Score']}"
+    overview_df = overview_df.sort_values(
+        "Score",
+        ascending=False
     )
 
-st.header("⚠ Schwächste Märkte")
-
-bottom3 = overview_df.tail(3)
-
-for _, row in bottom3.iterrows():
-
-    st.error(
-        f"{row['Asset']} | Score {row['Score']}"
+    st.dataframe(
+        overview_df,
+        use_container_width=True
     )
 
-# ------------------------------------------------
+    st.header("🏆 Top 3")
+
+    top3 = overview_df.head(3)
+
+    for _, row in top3.iterrows():
+
+        st.success(
+            f"{row['Asset']} | Score {row['Score']}"
+        )
+
+    st.header("⚠ Schwächste 3")
+
+    weakest = overview_df.tail(3)
+
+    for _, row in weakest.iterrows():
+
+        st.error(
+            f"{row['Asset']} | Score {row['Score']}"
+        )
+
+else:
+
+    st.warning(
+        "Keine Daten für die Marktübersicht verfügbar."
+    )
+
+# --------------------------------------------------
 # Detailanalyse
-# ------------------------------------------------
+# --------------------------------------------------
+
+st.header("🔍 Detailanalyse")
 
 asset = st.selectbox(
-    "📌 Asset auswählen",
+    "Asset auswählen",
     list(WATCHLIST.keys())
 )
 
@@ -250,46 +237,47 @@ try:
         close = close.iloc[:, 0]
 
     rsi = ta.momentum.RSIIndicator(
-        close=close
-    ).rsi()
-
-    atr = ta.volatility.AverageTrueRange(
-        high=data["High"],
-        low=data["Low"],
         close=close,
         window=14
-    ).average_true_range()
+    ).rsi()
 
-    st.header(asset)
+    ema50 = ta.trend.EMAIndicator(
+        close=close,
+        window=50
+    ).ema_indicator()
 
-    col1, col2, col3 = st.columns(3)
+    current_price = round(
+        float(close.iloc[-1]),
+        2
+    )
+
+    current_rsi = round(
+        float(rsi.iloc[-1]),
+        1
+    )
+
+    trend = (
+        "📈 Aufwärtstrend"
+        if current_price >
+        float(ema50.iloc[-1])
+        else "📉 Abwärtstrend"
+    )
+
+    col1, col2 = st.columns(2)
 
     with col1:
         st.metric(
             "Kurs",
-            round(
-                float(close.iloc[-1]),
-                2
-            )
+            current_price
         )
 
     with col2:
         st.metric(
             "RSI",
-            round(
-                float(rsi.iloc[-1]),
-                1
-            )
+            current_rsi
         )
 
-    with col3:
-        st.metric(
-            "ATR",
-            round(
-                float(atr.iloc[-1]),
-                2
-            )
-        )
+    st.write(trend)
 
     st.subheader("📊 Kursverlauf")
 
