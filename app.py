@@ -65,4 +65,9 @@ for name, symbol in markets.items():
 
         i += 1
 
-    except
+    except Exception as e:
+
+    st.error(
+        f"Fehler: {e}"
+    )
+
