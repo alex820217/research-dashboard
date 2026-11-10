@@ -168,13 +168,33 @@ try:
             last_rsi = float(rsi_all.iloc[-1])
             last_ema = float(ema50_all.iloc[-1])
 
-            s = 0
+            ema20_all = ta.trend.EMAIndicator(
+    close=c,
+    window=20
+).ema_indicator()
 
-            if last_price > last_ema:
-                s += 50
+ema20 = float(
+    ema20_all.iloc[-1]
+)
 
-            if last_rsi > 50:
-                s += 50
+performance6m = (
+    (c.iloc[-1] / c.iloc[0]) - 1
+) * 100
+
+s = 0
+
+if ema20 > last_ema:
+    s += 25
+
+if last_price > last_ema:
+    s += 25
+
+if last_rsi > 50:
+    s += 25
+
+if performance6m > 0:
+    s += 25
+
 
             if s >= 80:
                 trend_icon = "🟢"
